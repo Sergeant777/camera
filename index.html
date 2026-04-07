@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -24,11 +24,11 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Fixed Layering System */
+        /* --- PERFECT LAYERING SYSTEM --- */
         #bg-layer {
             position: absolute;
             inset: 0;
-            z-index: 1; /* Lowest */
+            z-index: 1; /* Bottom */
             background-color: #1e293b;
             background-size: cover;
             background-position: center;
@@ -62,6 +62,38 @@
             pointer-events: none;
         }
 
+        /* Words / UI layer */
+        #speech-bubble {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 4px solid black;
+            border-radius: 30px;
+            padding: 12px 24px;
+            color: black;
+            font-family: 'Bangers', cursive;
+            font-size: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            box-shadow: 8px 8px 0px rgba(0,0,0,1);
+            z-index: 50; /* Top */
+            display: none;
+            max-width: 80%;
+            pointer-events: none;
+        }
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            border-width: 18px 18px 0 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+            transform: translateX(-50%);
+        }
+
         .movable {
             position: absolute;
             cursor: move;
@@ -82,37 +114,6 @@
             border-radius: 20px;
         }
         .movable * { pointer-events: none; }
-
-        #speech-bubble {
-            position: absolute;
-            top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            border: 4px solid black;
-            border-radius: 30px;
-            padding: 12px 24px;
-            color: black;
-            font-family: 'Bangers', cursive;
-            font-size: 1.5rem;
-            text-align: center;
-            text-transform: uppercase;
-            box-shadow: 8px 8px 0px rgba(0,0,0,1);
-            z-index: 30; /* Top */
-            display: none;
-            max-width: 80%;
-            pointer-events: none;
-        }
-        #speech-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -18px;
-            left: 50%;
-            border-width: 18px 18px 0 0;
-            border-style: solid;
-            border-color: white transparent transparent transparent;
-            transform: translateX(-50%);
-        }
 
         #playback-overlay {
             position: absolute;
@@ -149,13 +150,13 @@
                 <h2 class="text-xl font-black italic text-white font-comic uppercase tracking-tight">ANIMATOR PRO</h2>
             </div>
 
-            <!-- Stage Tools -->
+            <!-- Scene Tools -->
             <section class="space-y-2">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">1. Scene Control</h3>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">1. Set the Stage</h3>
                 <div class="grid grid-cols-2 gap-2">
                     <button id="cam-toggle-btn" onclick="toggleCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1 hover:border-cyan-500 transition-all">
                         <i data-lucide="camera" id="cam-icon" class="w-4 h-4 text-cyan-400"></i>
-                        <span id="cam-status-text">Start Camera</span>
+                        <span id="cam-status-text">Camera ON</span>
                     </button>
                     <button onclick="flipCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1 hover:border-cyan-500">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i>
@@ -182,16 +183,14 @@
 
             <!-- Selection Tools -->
             <section class="space-y-4 border-t border-slate-800 pt-4">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">4. Selection Tools</h3>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">4. Edit Items</h3>
                 <div class="flex gap-2">
                     <button onclick="flipSelected()" class="flex-1 bg-slate-800 p-3 rounded-xl hover:bg-slate-700"><i data-lucide="flip-horizontal" class="w-4 h-4 mx-auto"></i></button>
                     <button onclick="deleteSelected()" class="flex-1 bg-red-900/20 text-red-500 p-3 rounded-xl border border-red-900/50 hover:bg-red-900/40"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
                 </div>
                 <div class="space-y-3">
-                    <div class="flex justify-between text-[9px] uppercase font-bold text-slate-500"><span>Size</span></div>
-                    <input type="range" id="size-slider" min="0.2" max="3" step="0.1" value="1" oninput="updateSelectedScale(this.value)">
-                    <div class="flex justify-between text-[9px] uppercase font-bold text-slate-500"><span>Rotate</span></div>
-                    <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0" oninput="updateSelectedRotation(this.value)">
+                    <input type="range" id="size-slider" min="0.2" max="3" step="0.1" value="1" oninput="updateSelectedScale(this.value)" class="w-full accent-cyan-500">
+                    <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0" oninput="updateSelectedRotation(this.value)" class="w-full accent-cyan-500">
                 </div>
             </section>
 
@@ -232,7 +231,7 @@
                         </button>
                         <div class="flex flex-col">
                             <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Speed (FPS)</span>
-                            <input type="range" min="1" max="15" value="5" class="w-24" id="fps-slider">
+                            <input type="range" min="1" max="15" value="5" class="w-24 accent-emerald-500" id="fps-slider">
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -249,7 +248,7 @@
         </div>
     </div>
 
-    <!-- The Hidden Compositor Canvas -->
+    <!-- The Hidden Hardware Compositor -->
     <canvas id="snap-canvas" class="hidden"></canvas>
 
     <script>
@@ -294,15 +293,17 @@
                 });
                 video.srcObject = stream;
                 video.style.display = "block";
-                document.getElementById('cam-status-text').innerText = "Stop Camera";
-            } catch (err) { alert("Camera Error: Check Permissions."); }
+                document.getElementById('cam-status-text').innerText = "Camera ON";
+                // When camera is on, the background image is technically behind it, 
+                // but camera covers it unless we hide the camera later.
+            } catch (err) { alert("Camera Access Error. Please check permissions."); }
         }
 
         function stopCamera() {
             if (stream) stream.getTracks().forEach(t => t.stop());
             stream = null;
             document.getElementById('camera-feed').style.display = "none";
-            document.getElementById('cam-status-text').innerText = "Start Camera";
+            document.getElementById('cam-status-text').innerText = "Camera OFF";
         }
 
         function flipCamera() {
@@ -324,7 +325,6 @@
             el.className = "movable";
             el.innerHTML = content;
             el.style.left = "30%"; el.style.top = "20%";
-            
             el.dataset.scale = 1; el.dataset.rotate = 0; el.dataset.flipped = "false";
             
             el.onpointerdown = (e) => {
@@ -381,13 +381,14 @@
                     addActor(`<img src="${ev.target.result}" class="max-w-full max-h-full drop-shadow-2xl">`);
                 } else {
                     document.getElementById('bg-layer').style.backgroundImage = `url(${ev.target.result})`;
+                    stopCamera(); // Switching to background image mode
                 }
                 e.target.value = ''; 
             };
             r.readAsDataURL(f);
         }
 
-        // --- COMPOSITOR (CRITICAL FIX FOR EMPTY SNAPS) ---
+        // --- HARDWARE COMPOSITOR (PREVENTS EMPTY SNAPS) ---
         async function snapFrame() {
             if (isPlaying) togglePlay();
             const viewport = document.getElementById('viewport');
@@ -396,6 +397,7 @@
             const canvas = document.getElementById('snap-canvas');
             const ctx = canvas.getContext('2d');
 
+            // Increase resolution for snaps
             canvas.width = viewport.offsetWidth * 2; 
             canvas.height = viewport.offsetHeight * 2;
 
@@ -410,12 +412,12 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // 2. Draw Live Camera Frame (Hardware Access)
+            // 2. Draw Live Camera Frame directly from the stream
             if (stream && video.readyState >= 2) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             }
 
-            // 3. Draw Overlays (Digital Actors + Words) using html2canvas on ONLY those layers
+            // 3. Draw Overlays (Actors + Speech Bubbles)
             const currentSelected = selectedEl;
             if (selectedEl) selectedEl.classList.remove('selected');
             
@@ -447,7 +449,7 @@
             timeline.appendChild(thumb);
             timeline.scrollLeft = timeline.scrollWidth;
 
-            // Clear text box for next frame
+            // Clear dialogue for next frame
             document.getElementById('dialogue-input').value = '';
             updateSpeech('');
         }
@@ -497,5 +499,4 @@
         }
     </script>
 </body>
-</html>          
-               
+</html>
