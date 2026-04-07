@@ -23,56 +23,65 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* The base layer: Live Camera */
+        /* --- STACKING SYSTEM --- */
+        #bg-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background-color: #1e293b;
+            background-size: cover;
+            background-position: center;
+        }
+
         #camera-feed {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            z-index: 1;
+            z-index: 5;
             display: none;
         }
 
-        /* The ghost layer: Onion Skin */
         #onion-skin {
             position: absolute;
             inset: 0;
-            z-index: 5;
-            opacity: 0.3;
+            z-index: 10;
+            opacity: 0.35;
             pointer-events: none;
             display: none;
             background-size: cover;
             background-position: center;
         }
 
-        /* The Digital Actor Layer */
-        #actors-layer {
+        #actors-container {
             position: absolute;
             inset: 0;
-            z-index: 10;
+            z-index: 20;
             pointer-events: none;
         }
 
         .movable {
             position: absolute;
             cursor: move;
-            width: 160px;
-            height: 200px;
+            width: 180px;
+            height: 240px;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
             touch-action: none;
+            transform-origin: center center;
             pointer-events: auto;
         }
         .movable.selected {
             outline: 3px dashed #06b6d4;
             outline-offset: 4px;
+            background: rgba(6, 182, 212, 0.1);
+            border-radius: 20px;
         }
         .movable * { pointer-events: none; }
 
-        /* The Story Layer */
         #speech-bubble {
             position: absolute;
             top: 10%;
@@ -81,23 +90,33 @@
             background: white;
             border: 4px solid black;
             border-radius: 30px;
-            padding: 10px 20px;
+            padding: 12px 24px;
             color: black;
             font-family: 'Bangers', cursive;
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             text-align: center;
             text-transform: uppercase;
-            box-shadow: 6px 6px 0px rgba(0,0,0,1);
-            z-index: 20;
+            box-shadow: 8px 8px 0px rgba(0,0,0,1);
+            z-index: 50;
             display: none;
             max-width: 80%;
             pointer-events: none;
+        }
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            border-width: 18px 18px 0 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+            transform: translateX(-50%);
         }
 
         #playback-overlay {
             position: absolute;
             inset: 0;
-            z-index: 100;
+            z-index: 200;
             background: black;
             display: none;
             align-items: center;
@@ -111,9 +130,10 @@
             border-radius: 12px;
             flex-shrink: 0;
             overflow: hidden;
+            position: relative;
             background: #1e293b;
         }
-        .timeline-thumb.active { border-color: #06b6d4; }
+        .timeline-thumb.active { border-color: #06b6d4; transform: scale(1.05); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -125,37 +145,43 @@
         <div class="lg:col-span-3 space-y-4 bg-slate-900 p-5 rounded-[40px] border border-slate-800 shadow-2xl h-fit">
             <div class="flex items-center gap-3 mb-4">
                 <div class="bg-cyan-500 text-black px-3 py-1 rounded-lg font-black text-xl italic font-comic uppercase">K</div>
-                <h2 class="text-xl font-black italic text-white font-comic uppercase tracking-tight">ANIMATOR</h2>
+                <h2 class="text-xl font-black italic text-white font-comic uppercase tracking-tight">ANIMATOR PRO</h2>
             </div>
 
+            <!-- Stage Tools -->
             <section class="space-y-2">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400">1. Camera</h3>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">1. Scene Control</h3>
                 <div class="grid grid-cols-2 gap-2">
-                    <button id="cam-btn" onclick="toggleCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 hover:border-cyan-500 transition-all flex flex-col items-center gap-1">
+                    <button id="cam-toggle-btn" onclick="toggleCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1 hover:border-cyan-500 transition-all">
                         <i data-lucide="camera" id="cam-icon" class="w-4 h-4 text-cyan-400"></i>
-                        <span id="cam-text">Camera ON</span>
+                        <span id="cam-status-text">Camera ON</span>
                     </button>
-                    <button onclick="flipCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1">
+                    <button onclick="flipCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1 hover:border-cyan-500">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i>
-                        <span>Flip Lens</span>
+                        <span>Switch Lens</span>
                     </button>
                 </div>
+                <button onclick="document.getElementById('bg-upload').click()" class="w-full bg-slate-800/40 py-2 rounded-xl text-[9px] font-black uppercase border border-slate-700 hover:text-white transition-all">Upload BG Image</button>
+                <input id="bg-upload" type="file" class="hidden" accept="image/*" onchange="handleFileUpload(event, 'bg')">
             </section>
 
+            <!-- Story Tools -->
             <section class="space-y-2 border-t border-slate-800 pt-4">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400">2. Story</h3>
-                <textarea id="dialogue-input" oninput="updateSpeech(this.value)" placeholder="Type words here..." class="w-full bg-black border-2 border-slate-800 rounded-2xl p-3 text-sm font-black uppercase text-white outline-none h-16 resize-none"></textarea>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">2. Story & Words</h3>
+                <textarea id="dialogue-input" oninput="updateSpeech(this.value)" placeholder="Type dialogue here..." class="w-full bg-black border-2 border-slate-800 rounded-2xl p-3 text-sm font-black uppercase text-white outline-none h-16 resize-none"></textarea>
             </section>
 
+            <!-- Actor Tools -->
             <section class="space-y-2 border-t border-slate-800 pt-4">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400">3. Digital Actors</h3>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">3. Digital Actors</h3>
                 <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="pose-list"></div>
-                <button onclick="document.getElementById('actor-upload').click()" class="w-full bg-slate-800 py-2 rounded-xl text-[9px] font-black uppercase border border-slate-700 hover:text-white transition-all">Import Photo</button>
-                <input id="actor-upload" type="file" class="hidden" accept="image/*" onchange="handleActorUpload(event)">
+                <button onclick="document.getElementById('char-upload').click()" class="w-full bg-slate-800 py-2 rounded-xl text-[9px] font-black uppercase border border-slate-700 hover:text-white transition-all">Import Character</button>
+                <input id="char-upload" type="file" class="hidden" accept="image/*" onchange="handleFileUpload(event, 'hero')">
             </section>
 
+            <!-- Selection Tools -->
             <section class="space-y-4 border-t border-slate-800 pt-4">
-                <h3 class="text-[10px] font-black uppercase text-cyan-400">4. Transform</h3>
+                <h3 class="text-[10px] font-black uppercase text-cyan-400 tracking-widest">4. Edit Selection</h3>
                 <div class="flex gap-2">
                     <button onclick="flipSelected()" class="flex-1 bg-slate-800 p-3 rounded-xl hover:bg-slate-700"><i data-lucide="flip-horizontal" class="w-4 h-4 mx-auto"></i></button>
                     <button onclick="deleteSelected()" class="flex-1 bg-red-900/20 text-red-500 p-3 rounded-xl border border-red-900/50 hover:bg-red-900/40"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
@@ -171,12 +197,16 @@
             </button>
         </div>
 
-        <!-- Viewport -->
+        <!-- Stage -->
         <div class="lg:col-span-9 space-y-4">
-            <div id="viewport" onpointerdown="handleViewportDown(event)">
+            <div id="viewport" onpointerdown="handleStageDown(event)">
+                <div id="bg-layer"></div>
                 <video id="camera-feed" autoplay playsinline muted></video>
                 <div id="onion-skin"></div>
-                <div id="actors-layer"></div>
+                
+                <!-- Actors Layer -->
+                <div id="actors-container"></div>
+                
                 <div id="speech-bubble"></div>
                 
                 <div id="playback-overlay">
@@ -203,20 +233,20 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="resetTimeline()" class="text-[10px] font-black text-red-500 uppercase px-4 py-2 hover:bg-red-500/10 rounded-xl">Clear All</button>
+                        <button onclick="resetEverything()" class="text-[10px] font-black text-red-500 uppercase px-4 py-2 hover:bg-red-500/10 rounded-xl">Clear All</button>
                         <button onclick="downloadFrames()" class="bg-slate-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-slate-700 flex items-center gap-2">
                             <i data-lucide="download" class="w-3 h-3"></i> Save Images
                         </button>
                     </div>
                 </div>
                 <div id="timeline" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide min-h-[140px]">
-                    <div id="empty-msg" class="w-full py-10 text-center border-4 border-dashed border-slate-800 rounded-[30px] opacity-20 uppercase font-black italic text-sm text-slate-400">Pose your robot and snap a frame!</div>
+                    <div id="empty-msg" class="w-full py-10 text-center border-4 border-dashed border-slate-800 rounded-[30px] opacity-20 uppercase font-black italic text-sm text-slate-400">Snap a frame to begin!</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Compositor Canvas -->
+    <!-- Hidden Snap Canvas -->
     <canvas id="snap-canvas" class="hidden"></canvas>
 
     <script>
@@ -232,9 +262,9 @@
         let frames = [];
         let isPlaying = false;
         let playInterval = null;
+        let zCounter = 100;
         let stream = null;
         let facingMode = "environment";
-        let zCounter = 100;
 
         function init() {
             lucide.createIcons();
@@ -250,7 +280,6 @@
             window.addEventListener('pointerup', handlePointerUp);
         }
 
-        // --- CAMERA ---
         async function toggleCamera() {
             const video = document.getElementById('camera-feed');
             if (stream) { stopCamera(); return; }
@@ -261,15 +290,15 @@
                 });
                 video.srcObject = stream;
                 video.style.display = "block";
-                document.getElementById('cam-text').innerText = "Camera ON";
-            } catch (err) { alert("Camera error: " + err.message); }
+                document.getElementById('cam-status-text').innerText = "Camera ON";
+            } catch (err) { alert("Camera Access Error."); }
         }
 
         function stopCamera() {
             if (stream) stream.getTracks().forEach(t => t.stop());
             stream = null;
             document.getElementById('camera-feed').style.display = "none";
-            document.getElementById('cam-text').innerText = "Camera OFF";
+            document.getElementById('cam-status-text').innerText = "Camera OFF";
         }
 
         function flipCamera() {
@@ -277,9 +306,15 @@
             if (stream) { stopCamera(); toggleCamera(); }
         }
 
-        // --- STUDIO ---
+        function updateSpeech(val) {
+            const bubble = document.getElementById('speech-bubble');
+            bubble.innerText = val;
+            bubble.style.display = val.trim() ? 'block' : 'none';
+        }
+
+        // --- FIXED ADD ACTOR (Appends to container now) ---
         function addActor(content) {
-            const layer = document.getElementById('actors-layer');
+            const container = document.getElementById('actors-container');
             const el = document.createElement('div');
             el.className = "movable";
             el.innerHTML = content;
@@ -296,12 +331,13 @@
                 dragOffset.y = e.clientY - rect.top;
                 el.setPointerCapture(e.pointerId);
             };
-            layer.appendChild(el);
+            el.ondblclick = () => { el.remove(); if(selectedEl===el) selectedEl=null; };
+            container.appendChild(el);
             selectElement(el);
             applyTransform(el);
         }
 
-        function handleViewportDown() { if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; } }
+        function handleStageDown() { if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; } }
 
         function handlePointerMove(e) {
             if (!selectedEl || activePointerId === null || e.pointerId !== activePointerId) return;
@@ -330,59 +366,70 @@
         function flipSelected() { if(selectedEl) { selectedEl.dataset.flipped = selectedEl.dataset.flipped === "true" ? "false" : "true"; applyTransform(selectedEl); } }
         function deleteSelected() { if(selectedEl) { selectedEl.remove(); selectedEl = null; } }
 
-        function handleActorUpload(e) {
+        function handleFileUpload(e, type) {
             const f = e.target.files[0];
             if(!f) return;
             const r = new FileReader();
-            r.onload = (ev) => { addActor(`<img src="${ev.target.result}" class="max-w-full max-h-full drop-shadow-2xl">`); e.target.value = ''; };
+            r.onload = (ev) => { 
+                if (type === 'hero') {
+                    addActor(`<img src="${ev.target.result}" class="max-w-full max-h-full drop-shadow-2xl">`);
+                } else {
+                    document.getElementById('bg-layer').style.backgroundImage = `url(${ev.target.result})`;
+                    stopCamera();
+                }
+                e.target.value = ''; 
+            };
             r.readAsDataURL(f);
         }
 
-        function updateSpeech(val) {
-            const b = document.getElementById('speech-bubble');
-            b.innerText = val;
-            b.style.display = val.trim() ? 'block' : 'none';
-        }
-
-        // --- HARDWARE COMPOSITOR (THE FIX) ---
+        // --- REBUILT COMPOSITOR (PREVENTS EMPTY SNAPS) ---
         async function snapFrame() {
             if (isPlaying) togglePlay();
             const viewport = document.getElementById('viewport');
             const video = document.getElementById('camera-feed');
+            const bgLayer = document.getElementById('bg-layer');
             const canvas = document.getElementById('snap-canvas');
             const ctx = canvas.getContext('2d');
 
             canvas.width = viewport.offsetWidth * 2; 
             canvas.height = viewport.offsetHeight * 2;
 
-            // 1. Draw Base (Camera or Black)
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 1. Draw Background Image
+            if (bgLayer.style.backgroundImage) {
+                const bgImg = new Image();
+                bgImg.src = bgLayer.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/, '$1');
+                await new Promise(r => bgImg.onload = r);
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // 2. Draw Camera Frame (Direct Pixel Access)
             if (stream && video.readyState >= 2) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             }
 
-            // 2. Draw Digital Layer (Actors + Bubbles)
+            // 3. Draw Overlays (Actors + Bubbles)
             const currentSelected = selectedEl;
             if (selectedEl) selectedEl.classList.remove('selected');
             
+            // We use html2canvas to ONLY capture the UI layers
             const overlay = await html2canvas(viewport, { 
                 backgroundColor: null, 
                 scale: 2, 
-                ignoreElements: (el) => el.id === 'camera-feed' || el.id === 'onion-skin' || el.id === 'playback-overlay'
+                ignoreElements: (el) => el.id === 'camera-feed' || el.id === 'onion-skin' || el.id === 'bg-layer' || el.id === 'playback-overlay'
             });
             ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
             
             if (currentSelected) currentSelected.classList.add('selected');
 
-            // 3. Save
+            // 4. Update Frames & UI
             const data = canvas.toDataURL("image/png");
             frames.push(data);
             
-            // UI Update
-            const skin = document.getElementById('onion-skin');
-            skin.style.backgroundImage = `url(${data})`;
-            skin.style.display = 'block';
+            document.getElementById('onion-skin').style.backgroundImage = `url(${data})`;
+            document.getElementById('onion-skin').style.display = 'block';
             document.getElementById('frame-count').innerText = `${frames.length} Frames`;
             
             const timeline = document.getElementById('timeline');
@@ -395,7 +442,6 @@
             timeline.appendChild(thumb);
             timeline.scrollLeft = timeline.scrollWidth;
 
-            // Clear text
             document.getElementById('dialogue-input').value = '';
             updateSpeech('');
         }
@@ -423,14 +469,16 @@
             }
         }
 
-        function resetTimeline() {
-            if(!confirm("Clear everything?")) return;
+        function resetEverything() {
+            if(!confirm("Clear all frames?")) return;
             frames = [];
             document.getElementById('timeline').innerHTML = '<div id="empty-msg" class="w-full py-10 text-center border-4 border-dashed border-slate-800 rounded-[30px] opacity-20 uppercase font-black italic text-sm text-slate-400">Snap a frame to begin!</div>';
-            document.getElementById('actors-layer').innerHTML = '';
+            document.getElementById('actors-container').innerHTML = '';
             document.getElementById('onion-skin').style.display = 'none';
             document.getElementById('frame-count').innerText = '0 Frames';
+            document.getElementById('bg-layer').style.backgroundImage = 'none';
             updateSpeech('');
+            stopCamera();
             if (isPlaying) togglePlay();
         }
 
@@ -444,6 +492,4 @@
     </script>
 </body>
 </html>
-         
-                
-   
+            
