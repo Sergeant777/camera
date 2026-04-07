@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kidovate Animator | Director's Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+        .font-comic { font-family: 'Bangers', cursive; letter-spacing: 0.05em; }
+        body { background-color: #020617; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        
+        #viewport {
+            height: 500px;
+            width: 100%;
+            background-color: #000;
+            position: relative;
+            border: 8px solid #000;
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        #camera-feed {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 5;
+            display: none;
+        }
+
+        /* Stabilizer Grid */
+        #stabilizer-grid {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            display: none;
+            background-image: 
+                linear-gradient(to right, rgba(6, 182, 212, 0.2) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(6, 182, 212, 0.2) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        #onion-skin {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            opacity: 0.3;
+            pointer-events: none;
+            display: none;
+            background-size: cover;
+            background-position: center;
+        }
+
+        #actors-container {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .movable {
+            position: absolute;
+            cursor: move;
+            width: 150px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            touch-action: none;
+            transform-origin: center center;
+            pointer-events: auto;
+        }
+        .movable.selected { outline: 3px dashed #06b6d4; outline-offset: 4px; }
+        .movable img, .movable svg { width: 100%; height: 100%; pointer-events: none; }
+
+        #speech-bubble {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 4px solid black;
+            border-radius: 30px;
+            padding: 12px 24px;
+            color: black;
+            font-family: 'Bangers', cursive;
+            font-size: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            box-shadow: 8px 8px 0px rgba(0,0,0,1);
+            z-index: 50;
+            display: none;
+            max-width: 80%;
+            pointer-events: none;
+        }
+
+        #playback-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 200;
+            background: black;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timeline-thumb {
+            width: 100px;
+            aspect-ratio: 4/5;
+            border: 4px solid #0f172a;
+            border-radius: 12px;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: #1e293b;
+        }
+        .timeline-thumb.active { border-color: #06b6d4; transform: scale(1.05); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="p-4" onload="init()">
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Sidebar -->
+        <div class="lg:col-span-3 space-y-4 bg-slate-900 p-5 rounded-[40px] border border-slate-800 shadow-2xl h-fit">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="bg-cyan-500 text-black px-2 py-0.5 rounded font-black text-lg italic font-comic">K</div>
+                    <h2 class="text-lg font-black italic text-white font-comic">DIRECTOR</h2>
+                </div>
+                <button onclick="toggleGrid()" id="grid-btn" class="p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">
+                    <i data-lucide="grid-3x3" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <section class="space-y-2">
+                <h3 class="text-[10px] font-black uppercase text-cyan-400">1. Stage Camera</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="toggleCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 hover:border-cyan-500 transition-all flex flex-col items-center gap-1">
+                        <i data-lucide="camera" class="w-4 h-4 text-cyan-400"></i>
+                        <span id="cam-text">Camera ON</span>
+                    </button>
+                    <button onclick="flipCamera()" class="bg-slate-800 py-3 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex flex-col items-center gap-1">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Flip Lens</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="space-y-2 border-t border-slate-800 pt-4">
+                <h3 class="text-[10px] font-black uppercase text-cyan-400">2. FX Pack & Actors</h3>
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="fx-list"></div>
+                <button onclick="document.getElementById('char-upload').click()" class="w-full bg-slate-800 py-2 rounded-xl text-[9px] font-black uppercase border border-slate-700 flex items-center justify-center gap-2">
+                    <i data-lucide="image-plus" class="w-3 h-3"></i> Add Photo
+                </button>
+                <input id="char-upload" type="file" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+            </section>
+
+            <section class="space-y-2 border-t border-slate-800 pt-4">
+                <h3 class="text-[10px] font-black uppercase text-cyan-400">3. Dialogue</h3>
+                <textarea id="dialogue-input" oninput="updateSpeech(this.value)" placeholder="Type what they say..." class="w-full bg-black border-2 border-slate-800 rounded-2xl p-3 text-sm font-black uppercase text-white outline-none h-16 resize-none"></textarea>
+            </section>
+
+            <section class="space-y-4 border-t border-slate-800 pt-4">
+                <div class="flex gap-2">
+                    <button onclick="flipSelected()" class="flex-1 bg-slate-800 p-3 rounded-xl hover:bg-slate-700"><i data-lucide="flip-horizontal" class="w-4 h-4 mx-auto"></i></button>
+                    <button onclick="deleteSelected()" class="flex-1 bg-red-900/20 text-red-500 p-3 rounded-xl border border-red-900/50 hover:bg-red-900/40"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
+                </div>
+                <div class="space-y-2">
+                    <input type="range" id="size-slider" min="0.2" max="3" step="0.1" value="1" oninput="updateSelectedScale(this.value)" class="w-full accent-cyan-500">
+                    <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0" oninput="updateSelectedRotation(this.value)" class="w-full accent-cyan-500">
+                </div>
+            </section>
+
+            <button onclick="snapFrame()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 py-5 rounded-3xl text-xl font-black uppercase shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                <i data-lucide="camera" class="w-6 h-6"></i> SNAP FRAME
+            </button>
+        </div>
+
+        <!-- Stage Area -->
+        <div class="lg:col-span-9 space-y-4">
+            <div id="viewport" onpointerdown="handleStageDown(event)">
+                <video id="camera-feed" autoplay playsinline muted></video>
+                <div id="stabilizer-grid"></div>
+                <div id="onion-skin"></div>
+                <div id="actors-container"></div>
+                <div id="speech-bubble"></div>
+                <div id="playback-overlay">
+                    <img id="playback-img" src="" class="max-w-full max-h-full">
+                </div>
+                
+                <div class="absolute bottom-6 left-6 flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/10 z-[60]">
+                    <div class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+                    <span id="frame-count" class="text-[10px] font-black uppercase text-white tracking-widest">0 Frames</span>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="bg-slate-900 border border-slate-800 rounded-[50px] p-6 shadow-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                    <div class="flex items-center gap-4">
+                        <button id="play-btn" onclick="togglePlay()" class="bg-emerald-500 text-black px-8 py-3 rounded-2xl font-black uppercase flex items-center gap-3 shadow-lg active:scale-95 transition-all">
+                            <i data-lucide="play" id="play-icon" class="w-5 h-5 fill-current"></i> <span id="play-text">PLAY FILM</span>
+                        </button>
+                        <div class="flex flex-col">
+                            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">FPS</span>
+                            <input type="range" min="1" max="15" value="5" class="w-24 accent-emerald-500" id="fps-slider">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="resetEverything()" class="text-[10px] font-black text-red-500 uppercase px-4 py-2 hover:bg-red-500/10 rounded-xl">Clear All</button>
+                        <button onclick="downloadFrames()" class="bg-slate-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-slate-700 flex items-center gap-2">
+                            <i data-lucide="download" class="w-3 h-3"></i> Save All
+                        </button>
+                    </div>
+                </div>
+                <div id="timeline" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide min-h-[140px]">
+                    <div id="empty-msg" class="w-full py-10 text-center border-4 border-dashed border-slate-800 rounded-[30px] opacity-20 uppercase font-black italic text-sm text-slate-400">Pose your toy and snap a frame!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="snap-canvas" class="hidden"></canvas>
+
+    <script>
+        const FX_PACK = [
+            { id: 'zap', svg: `<svg viewBox="0 0 100 100"><path d="M50 10 L60 40 L90 50 L60 60 L50 90 L40 60 L10 50 L40 40 Z" fill="#ff0" stroke="#000" stroke-width="3"/></svg>` },
+            { id: 'pow', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#f00" stroke="#000" stroke-width="3"/><text x="50" y="58" text-anchor="middle" font-family="Bangers" font-size="22" fill="white">POW!</text></svg>` },
+            { id: 'laser', svg: `<svg viewBox="0 0 100 100"><rect x="10" y="45" width="80" height="10" rx="5" fill="#0ff" class="animate-pulse"/></svg>` },
+            { id: 'dummy', svg: `<svg viewBox="0 0 100 150"><circle cx="50" cy="22" r="6" fill="#06f"/><rect x="47" y="28" width="6" height="50" fill="#06f"/><path d="M40 78 L40 130 M60 78 L60 130 M30 40 L15 80 M70 40 L85 80" stroke-width="6" stroke="#06f" fill="none"/></svg>` }
+        ];
+
+        let selectedEl = null;
+        let activePointerId = null;
+        let dragOffset = { x: 0, y: 0 };
+        let frames = [];
+        let isPlaying = false;
+        let playInterval = null;
+        let stream = null;
+        let facingMode = "environment";
+        let zCounter = 100;
+
+        function init() {
+            lucide.createIcons();
+            const list = document.getElementById('fx-list');
+            FX_PACK.forEach(item => {
+                const b = document.createElement('button');
+                b.className = "shrink-0 w-12 h-12 rounded-xl bg-black border border-slate-800 p-1 hover:border-cyan-500 transition-all";
+                b.innerHTML = item.svg;
+                b.onclick = () => addActor(item.svg, item.id === 'dummy' ? 'svg' : 'fx');
+                list.appendChild(b);
+            });
+            window.addEventListener('pointermove', handlePointerMove);
+            window.addEventListener('pointerup', handlePointerUp);
+        }
+
+        async function toggleCamera() {
+            const video = document.getElementById('camera-feed');
+            if (stream) { stopCamera(); return; }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+                video.srcObject = stream;
+                video.style.display = "block";
+                document.getElementById('cam-text').innerText = "Camera ON";
+            } catch (err) { alert("Camera Access Error."); }
+        }
+
+        function stopCamera() {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            stream = null;
+            document.getElementById('camera-feed').style.display = "none";
+            document.getElementById('cam-text').innerText = "Camera OFF";
+        }
+
+        function flipCamera() {
+            facingMode = (facingMode === "user") ? "environment" : "user";
+            if (stream) { stopCamera(); toggleCamera(); }
+        }
+
+        function toggleGrid() {
+            const grid = document.getElementById('stabilizer-grid');
+            const btn = document.getElementById('grid-btn');
+            const isOff = grid.style.display === 'none' || grid.style.display === '';
+            grid.style.display = isOff ? 'block' : 'none';
+            btn.classList.toggle('text-cyan-400', isOff);
+        }
+
+        function updateSpeech(val) {
+            const bubble = document.getElementById('speech-bubble');
+            bubble.innerText = val;
+            bubble.style.display = val.trim() ? 'block' : 'none';
+        }
+
+        function addActor(content, type) {
+            const container = document.getElementById('actors-container');
+            const el = document.createElement('div');
+            el.className = "movable";
+            el.dataset.type = type;
+            el.dataset.content = content; 
+            el.innerHTML = content;
+            el.style.left = "30%"; el.style.top = "20%";
+            el.dataset.scale = 1; el.dataset.rotate = 0; el.dataset.flipped = "false";
+            
+            el.onpointerdown = (e) => {
+                e.stopPropagation();
+                selectElement(el);
+                zCounter++; el.style.zIndex = zCounter;
+                activePointerId = e.pointerId;
+                const rect = el.getBoundingClientRect();
+                dragOffset.x = e.clientX - rect.left;
+                dragOffset.y = e.clientY - rect.top;
+                el.setPointerCapture(e.pointerId);
+            };
+            el.ondblclick = () => { el.remove(); if(selectedEl===el) selectedEl=null; };
+            container.appendChild(el);
+            selectElement(el);
+            applyTransform(el);
+        }
+
+        function handleStageDown() { if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; } }
+
+        function handlePointerMove(e) {
+            if (!selectedEl || activePointerId === null || e.pointerId !== activePointerId) return;
+            const v = document.getElementById('viewport').getBoundingClientRect();
+            selectedEl.style.left = (e.clientX - v.left - dragOffset.x) + 'px';
+            selectedEl.style.top = (e.clientY - v.top - dragOffset.y) + 'px';
+        }
+
+        function handlePointerUp() { activePointerId = null; }
+
+        function selectElement(el) {
+            if (selectedEl) selectedEl.classList.remove('selected');
+            selectedEl = el; el.classList.add('selected');
+            document.getElementById('size-slider').value = el.dataset.scale;
+            document.getElementById('rotate-slider').value = el.dataset.rotate;
+        }
+
+        function applyTransform(el) {
+            const s = el.dataset.scale, r = el.dataset.rotate;
+            const f = el.dataset.flipped === "true" ? -1 : 1;
+            el.style.transform = `scale(${s * f}, ${s}) rotate(${r}deg)`;
+        }
+
+        function updateSelectedScale(v) { if(selectedEl) { selectedEl.dataset.scale = v; applyTransform(selectedEl); } }
+        function updateSelectedRotation(v) { if(selectedEl) { selectedEl.dataset.rotate = v; applyTransform(selectedEl); } }
+        function flipSelected() { if(selectedEl) { selectedEl.dataset.flipped = selectedEl.dataset.flipped === "true" ? "false" : "true"; applyTransform(selectedEl); } }
+        function deleteSelected() { if(selectedEl) { selectedEl.remove(); selectedEl = null; } }
+
+        function handleFileUpload(e) {
+            const f = e.target.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = (ev) => { addActor(`<img src="${ev.target.result}">`, 'img'); e.target.value = ''; };
+            r.readAsDataURL(f);
+        }
+
+        // --- THE COMPOSITOR ---
+        async function snapFrame() {
+            if (isPlaying) togglePlay();
+            const viewport = document.getElementById('viewport');
+            const video = document.getElementById('camera-feed');
+            const canvas = document.getElementById('snap-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 1280; 
+            canvas.height = 720;
+            const viewRect = viewport.getBoundingClientRect();
+
+            // 1. Draw Camera
+            ctx.fillStyle = "black";
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+            if (stream && video.readyState >= 2) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            }
+
+            // 2. Draw Digital Actors
+            const actors = document.querySelectorAll('.movable');
+            for (let actor of actors) {
+                const rect = actor.getBoundingClientRect();
+                const x = ((rect.left - viewRect.left) / viewRect.width) * canvas.width;
+                const y = ((rect.top - viewRect.top) / viewRect.height) * canvas.height;
+                const w = (rect.width / viewRect.width) * canvas.width;
+                const h = (rect.height / viewRect.height) * canvas.height;
+
+                const img = new Image();
+                if (actor.dataset.type === 'svg' || actor.dataset.type === 'fx') {
+                    const blob = new Blob([actor.dataset.content], {type: 'image/svg+xml'});
+                    img.src = URL.createObjectURL(blob);
+                } else {
+                    img.src = actor.querySelector('img').src;
+                }
+
+                await new Promise(res => img.onload = res);
+                
+                ctx.save();
+                ctx.translate(x + w/2, y + h/2);
+                ctx.rotate(actor.dataset.rotate * Math.PI / 180);
+                const flip = actor.dataset.flipped === "true" ? -1 : 1;
+                ctx.scale(flip, 1);
+                ctx.drawImage(img, -w/2, -h/2, w, h);
+                ctx.restore();
+            }
+
+            // 3. Draw Words
+            const bubble = document.getElementById('speech-bubble');
+            if (bubble.style.display !== 'none') {
+                ctx.fillStyle = "white";
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 6;
+                const bw = canvas.width * 0.7;
+                const bh = 90;
+                const bx = (canvas.width - bw) / 2;
+                const by = canvas.height * 0.1;
+                ctx.fillRect(bx, by, bw, bh);
+                ctx.strokeRect(bx, by, bw, bh);
+                ctx.fillStyle = "black";
+                ctx.font = "bold 44px Bangers";
+                ctx.textAlign = "center";
+                ctx.fillText(bubble.innerText, canvas.width/2, by + 60);
+            }
+
+            const data = canvas.toDataURL("image/png");
+            frames.push(data);
+            
+            // UI
+            document.getElementById('onion-skin').style.backgroundImage = `url(${data})`;
+            document.getElementById('onion-skin').style.display = 'block';
+            document.getElementById('frame-count').innerText = `${frames.length} Frames`;
+            
+            const timeline = document.getElementById('timeline');
+            const empty = document.getElementById('empty-msg');
+            if (empty) empty.remove();
+            const thumb = document.createElement('div');
+            thumb.className = "timeline-thumb";
+            thumb.innerHTML = `<img src="${data}" class="w-full h-full object-cover opacity-60"><div class="absolute bottom-1 right-1 text-[8px] font-black">${frames.length}</div>`;
+            timeline.appendChild(thumb);
+            timeline.scrollLeft = timeline.scrollWidth;
+
+            document.getElementById('dialogue-input').value = '';
+            updateSpeech('');
+        }
+
+        function togglePlay() {
+            if (frames.length < 1) return;
+            isPlaying = !isPlaying;
+            const overlay = document.getElementById('playback-overlay');
+            const img = document.getElementById('playback-img');
+            const btnText = document.getElementById('play-text');
+            if (isPlaying) {
+                overlay.style.display = 'flex';
+                btnText.innerText = 'STOP FILM';
+                let i = 0;
+                playInterval = setInterval(() => {
+                    img.src = frames[i];
+                    i = (i + 1) % frames.length;
+                }, 1000 / document.getElementById('fps-slider').value);
+            } else {
+                clearInterval(playInterval);
+                overlay.style.display = 'none';
+                btnText.innerText = 'WATCH FILM';
+            }
+        }
+
+        function resetEverything() {
+            if(!confirm("Clear all frames?")) return;
+            frames = [];
+            document.getElementById('timeline').innerHTML = '<div id="empty-msg" class="w-full py-10 text-center border-4 border-dashed border-slate-800 rounded-[30px] opacity-20 uppercase font-black italic text-sm text-slate-400">Snap a frame to begin!</div>';
+            document.getElementById('actors-container').innerHTML = '';
+            document.getElementById('onion-skin').style.display = 'none';
+            document.getElementById('frame-count').innerText = '0 Frames';
+            updateSpeech('');
+            if (isPlaying) togglePlay();
+        }
+
+        function downloadFrames() {
+            frames.forEach((f, i) => {
+                const a = document.createElement('a');
+                a.download = `anim_frame_${(i+1).toString().padStart(3, '0')}.png`;
+                a.href = f; a.click();
+            });
+        }
+    </script>
+</body>
+</html>
